@@ -1,0 +1,152 @@
+//Use Future Methods
+
+//Apex class
+public class AccountProcessor 
+{
+  @future
+  public static void countContacts(Set<id> setId) 
+  {
+      List<Account> lstAccount = [select id,Number_of_Contacts__c , (select id from contacts ) from account where id in :setId ];
+      for( Account acc : lstAccount )
+      {
+          List<Contact> lstCont = acc.contacts ;
+          
+          acc.Number_of_Contacts__c = lstCont.size();
+      }
+      update lstAccount;
+  }
+}
+//Test class
+@IsTest
+public class AccountProcessorTest {
+    public static testmethod void TestAccountProcessorTest() 
+    {
+        Account a = new Account();
+        a.Name = 'Test Account';
+        Insert a;
+
+        Contact cont = New Contact();
+        cont.FirstName ='Bob';
+        cont.LastName ='Masters';
+        cont.AccountId = a.Id;
+        Insert cont;
+        
+        set<Id> setAccId = new Set<ID>();
+        setAccId.add(a.id);
+ 
+        Test.startTest();
+            AccountProcessor.countContacts(setAccId);
+        Test.stopTest();
+        
+        Account ACC = [select Number_of_Contacts__c from Account where id = :a.id LIMIT 1];
+        System.assertEquals ( Integer.valueOf(ACC.Number_of_Contacts__c) ,1);
+  }
+  
+}
+
+//Use Batch Apex
+//Batch job
+global class LeadProcessor implements    Database.Batchable<Sobject> 
+{
+    global Database.QueryLocator start(Database.BatchableContext bc) 
+    {
+        return Database.getQueryLocator([Select LeadSource From Lead ]);
+    }
+
+    global void execute(Database.BatchableContext bc, List<Lead> scope)
+    {
+            for (Lead Leads : scope) 
+            {
+                Leads.LeadSource = 'Dreamforce';
+            }
+        update scope;
+    }    
+
+    global void finish(Database.BatchableContext bc){   }    
+}
+//Test class
+@isTest 
+public class LeadProcessorTest 
+{
+    static testMethod void testMethod1() 
+    {
+        List<Lead> lstLead = new List<Lead>();
+        for(Integer i=0 ;i <200;i++)
+        {
+            Lead led = new Lead();
+            led.FirstName ='FirstName';
+            led.LastName ='LastName'+i;
+            led.Company ='demo'+i;
+            lstLead.add(led);
+        }
+        
+        insert lstLead;
+        
+        Test.startTest();
+
+            LeadProcessor obj = new LeadProcessor();
+            DataBase.executeBatch(obj); 
+            
+        Test.stopTest();
+    }
+}
+
+//Control processes with Queueable Apex
+global class LeadProcessor implements    Database.Batchable<Sobject> 
+{
+    global Database.QueryLocator start(Database.BatchableContext bc) 
+    {
+        return Database.getQueryLocator([Select LastName From Lead ]);
+    }
+
+    global void execute(Database.BatchableContext bc, List<Lead> scope)
+    {
+            for (Lead Leads : scope) 
+            {
+                Leads.LeadSource = 'Dreamforce';
+            }
+        update scope;
+    }    
+
+    global void finish(Database.BatchableContext bc){   }    
+}
+@isTest 
+public class LeadProcessorTest 
+{
+    static testMethod void testMethod1() 
+    {
+        List<Lead> lstLead = new List<Lead>();
+        for(Integer i=0 ;i <200;i++)
+        {
+            Lead led = new Lead();
+            led.FirstName ='FirstName';
+            led.LastName ='LastName'+i;
+            led.Company ='demo'+i;
+            lstLead.add(led);
+        }
+        
+        insert lstLead;
+        
+        Test.startTest();
+
+            LeadProcessor obj = new LeadProcessor();
+            DataBase.executeBatch(obj); 
+            
+        Test.stopTest();
+    }
+}
+
+//Schedule jobs using the Apex Scheduler
+global class DailyLeadProcessor implements Schedulable {
+
+    global void execute(SchedulableContext ctx) {
+        List<Lead> lList = [Select Id, LeadSource from Lead where LeadSource = null];
+        
+        if(!lList.isEmpty()) {
+			for(Lead l: lList) {
+				l.LeadSource = 'Dreamforce';
+			}
+			update lList;
+		}
+    }
+}
